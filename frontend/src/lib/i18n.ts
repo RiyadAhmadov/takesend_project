@@ -88,7 +88,6 @@ export const translations = {
     today: 'Bu gün',
     month: 'Bu ay',
     total: 'Cəmi',
-    earnings: 'Qazanc',
     azn: '₼',
 
     // Countries
@@ -190,7 +189,6 @@ export const translations = {
     today: 'Today',
     month: 'This month',
     total: 'Total',
-    earnings: 'Earnings',
     azn: '₼',
     selectCountry: 'Select country',
     turkey: 'Turkey',
@@ -286,7 +284,6 @@ export const translations = {
     today: 'Сегодня',
     month: 'Этот месяц',
     total: 'Всего',
-    earnings: 'Заработок',
     azn: '₼',
     selectCountry: 'Выбрать страну',
     turkey: 'Турция',
@@ -382,7 +379,6 @@ export const translations = {
     today: 'Bugün',
     month: 'Bu ay',
     total: 'Toplam',
-    earnings: 'Kazanç',
     azn: '₼',
     selectCountry: 'Ülke seçin',
     turkey: 'Türkiye',
