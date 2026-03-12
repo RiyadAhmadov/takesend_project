@@ -1,0 +1,261 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SENDER
+  COURIER
+  ADMIN
+}
+
+enum OrderStatus {
+  CREATED
+  ACCEPTED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum PackageType {
+  DOCUMENT
+  BOX
+  FOOD
+  OTHER
+}
+
+enum PackageSize {
+  S
+  M
+  L
+}
+
+enum PaymentMethod {
+  CARD
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TransportType {
+  WALKING
+  MOTORCYCLE
+  CAR
+}
+
+model User {
+  id            String    @id @default(uuid())
+  phone         String    @unique
+  name          String
+  surname       String
+  email         String?   @unique
+  role          Role      @default(SENDER)
+  avatarUrl     String?
+  isVerified    Boolean   @default(false)
+  isBanned      Boolean   @default(false)
+  isOnline      Boolean   @default(false)
+  
+  // Courier specific
+  transportType TransportType?
+  licensePlate  String?
+  idVerified    Boolean   @default(false)
+  rating        Float     @default(5.0)
+  totalDeliveries Int     @default(0)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  sentOrders    Order[]   @relation("SenderOrders")
+  courierOrders Order[]   @relation("CourierOrders")
+  locations     Location[]
+  otpCodes      OtpCode[]
+  payments      Payment[]
+  reviews       Review[]  @relation("ReviewAuthor")
+  receivedReviews Review[] @relation("ReviewTarget")
+  adminLogs     AdminLog[]
+
+  @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String?
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("otp_codes")
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  senderId        String
+  courierId       String?
+  
+  // Package info
+  packageType     PackageType
+  packageSize     PackageSize
+  weightKg        Float
+  description     String?
+  photoUrl        String?
+  
+  // Locations
+  pickupLat       Float
+  pickupLng       Float
+  pickupAddress   String
+  dropoffLat      Float
+  dropoffLng      Float
+  dropoffAddress  String
+  distanceKm      Float
+  
+  // Destination country (international)
+  destinationCountry String
+  
+  // Pricing
+  price           Float
+  platformFee     Float         @default(0)
+  
+  // Timing
+  scheduledAt     DateTime?
+  isUrgent        Boolean       @default(false)
+  
+  // Status
+  status          OrderStatus   @default(CREATED)
+  
+  // Notes
+  senderNote      String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  sender          User          @relation("SenderOrders", fields: [senderId], references: [id])
+  courier         User?         @relation("CourierOrders", fields: [courierId], references: [id])
+  events          OrderEvent[]
+  payment         Payment?
+  review          Review?
+
+  @@map("orders")
+}
+
+model OrderEvent {
+  id        String      @id @default(uuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  lat       Float?
+  lng       Float?
+  createdAt DateTime    @default(now())
+
+  order     Order       @relation(fields: [orderId], references: [id])
+
+  @@map("order_events")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  courierId String
+  lat       Float
+  lng       Float
+  heading   Float?
+  speed     Float?
+  createdAt DateTime @default(now())
+
+  courier   User     @relation(fields: [courierId], references: [id])
+
+  @@map("locations")
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  orderId     String        @unique
+  userId      String
+  method      PaymentMethod
+  amount      Float
+  currency    String        @default("AZN")
+  status      PaymentStatus @default(PENDING)
+  providerRef String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order       Order         @relation(fields: [orderId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@map("payments")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  orderId    String   @unique
+  authorId   String
+  targetId   String
+  rating     Int      // 1-5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  order      Order    @relation(fields: [orderId], references: [id])
+  author     User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  target     User     @relation("ReviewTarget", fields: [targetId], references: [id])
+
+  @@map("reviews")
+}
+
+model PricingConfig {
+  id            String   @id @default(uuid())
+  countryCode   String   @unique
+  countryName   String
+  baseFee       Float
+  perKmFee      Float
+  urgentMultiplier Float  @default(1.3)
+  platformFeePercent Float @default(10)
+  isActive      Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@map("pricing_configs")
+}
+
+model AdminLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  targetId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  admin     User     @relation(fields: [adminId], references: [id])
+
+  @@map("admin_logs")
+}
+
+model SupportTicket {
+  id          String   @id @default(uuid())
+  userId      String
+  orderId     String?
+  subject     String
+  message     String
+  status      String   @default("open") // open, in_progress, closed
+  adminReply  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("support_tickets")
+}
