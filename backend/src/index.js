@@ -21,9 +21,10 @@ const server = http.createServer(app);
 initSocket(server);
 
 // Middleware
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: true,
   credentials: true
 }));
 app.use(morgan('dev'));
